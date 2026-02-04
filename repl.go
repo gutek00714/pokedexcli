@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"io"
 	"encoding/json"
+	"github.com/gutek00714/pokedexcli/internal/pokecache"
 )
 
 type cliCommand struct {
@@ -105,18 +106,19 @@ func commandHelp(cfg *config) error {
 }
 
 type Issue struct {
-	Next string
-	Previous string
-	Results []Result
+	Next string `json:"next"`
+	Previous string `json:"previous"`
+	Results []Result `json:"results"`
 }
 
 type Result struct {
-	Name string
+	Name string `json:"name"`
 }
 
 type config struct {
 	nextLocationsURL string
 	previousLocationsURL string
+	pokeCache *pokecache.Cache
 }
 
 func commandMap(cfg *config) error {
@@ -124,28 +126,42 @@ func commandMap(cfg *config) error {
 
 	// Check if next url exists or use default one
 	if cfg.nextLocationsURL == "" {
-		url = "https://pokeapi.co/api/v2/location-area/"
+		url = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 	} else {
 		url = cfg.nextLocationsURL
 	}
 
-	// Call API
-	res, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	
-	// Create object from the call
+	//get
 	var issues Issue
-	if err := json.Unmarshal(body, &issues); err != nil {
-		return err
+	// fmt.Println(url)
+	data, found := cfg.pokeCache.Get(url)
+	if found {
+		if err := json.Unmarshal(data, &issues); err != nil {
+			return err
+		}
+	} else {
+		// Call API
+		res, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+
+		//add
+		cfg.pokeCache.Add(url, body)
+		
+		// Create object from the call
+		if err := json.Unmarshal(body, &issues); err != nil {
+			return err
+		}
 	}
+
+
 
 	for _, loc := range issues.Results {
 		fmt.Println(loc.Name)
@@ -163,27 +179,39 @@ func commandMapb(cfg *config) error {
 
 	// Check if next url exists or use default one
 	if cfg.previousLocationsURL == "" {
-		url = "https://pokeapi.co/api/v2/location-area/"
+		url = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 	} else {
 		url = cfg.previousLocationsURL
 	}
 
-	// Call API
-	res, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	
-	// Create object from the call
+	//get
 	var issues Issue
-	if err := json.Unmarshal(body, &issues); err != nil {
-		return err
+	// fmt.Println(url)
+	data, found := cfg.pokeCache.Get(url)
+	if found {
+		if err := json.Unmarshal(data, &issues); err != nil {
+			return err
+		}
+	} else {
+		// Call API
+		res, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+
+		//add
+		cfg.pokeCache.Add(url, body)
+		
+		// Create object from the call
+		if err := json.Unmarshal(body, &issues); err != nil {
+			return err
+		}
 	}
 
 	for _, loc := range issues.Results {

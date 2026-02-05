@@ -72,6 +72,11 @@ func startRepl(cfg *config) {
 			description: "Inspect Pokemon stats",
 			callback: commandInspect,
 		},
+		"pokedex": {
+			name: "pokedex",
+			description: "Show caught Pokemon",
+			callback: commandPokedex,
+		},
 	}
 
 	for {
@@ -314,6 +319,7 @@ func commandCatch(cfg *config, name string) error {
 	} else {
 		fmt.Printf("%v was caught!\n", name)
 		cfg.pokedex[name] = pokemon
+		fmt.Println("You may now inspect it with the inspect command.")
 	}
 	return nil
 }
@@ -348,5 +354,13 @@ func commandInspect(cfg *config, name string) error {
 		fmt.Printf(" - %v\n", t.Type.Name)
 	}
 
+	return nil
+}
+
+func commandPokedex(cfg *config, _ string) error {
+	fmt.Println("Your Pokedex:")
+	for pokemon := range cfg.pokedex {
+		fmt.Printf(" - %v\n", pokemon)
+	}
 	return nil
 }

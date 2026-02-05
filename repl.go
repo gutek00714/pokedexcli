@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"github.com/gutek00714/pokedexcli/internal/pokecache"
 	"github.com/gutek00714/pokedexcli/internal/pokeapi"
+	"math/rand"
 )
 
 type cliCommand struct {
@@ -22,6 +23,7 @@ type config struct {
 	nextLocationsURL string
 	previousLocationsURL string
 	pokeCache *pokecache.Cache
+	pokedex map[string]pokeapi.Pokemon
 }
 
 var commands map[string]cliCommand
@@ -59,6 +61,16 @@ func startRepl(cfg *config) {
 			name: "explore",
 			description: "Display a list of all Pokemon in the location",
 			callback: commandExplore,
+		},
+		"catch": {
+			name: "catch",
+			description: "Try to catch a Pokemon",
+			callback: commandCatch,
+		},
+		"inspect": {
+			name: "inspect",
+			description: "Inspect Pokemon stats",
+			callback: commandInspect,
 		},
 	}
 
@@ -251,6 +263,89 @@ func commandExplore(cfg *config, name string) error {
 	fmt.Println("Found Pokemon:")
 	for _, encounter := range locationArea.PokemonEncounters {
 		fmt.Printf(" - %v\n", encounter.Pokemon.Name)
+	}
+
+	return nil
+}
+
+func commandCatch(cfg *config, name string) error {
+	if len(name) == 0 {
+		return fmt.Errorf("you must provide a Pokemon name")
+	}
+	url := "https://pokeapi.co/api/v2/pokemon/" + name
+
+	fmt.Printf("Throwing a Pokeball at %v...\n", name)
+
+	var pokemon pokeapi.Pokemon
+
+	// Check cache get
+	data, found := cfg.pokeCache.Get(url)
+	if found {
+		if err := json.Unmarshal(data, &pokemon); err != nil {
+			return err
+		}
+	} else {
+		// Call API
+		res, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+
+		// Add to cache
+		cfg.pokeCache.Add(url, body)
+
+		// Create object from the call
+		if err := json.Unmarshal(body, &pokemon); err != nil {
+			return err
+		}
+	}
+
+	// Calculate pokemon catch rate
+	catch_treshold := 30
+	random := rand.Intn(pokemon.BaseExperience)
+	if random > catch_treshold {
+		fmt.Printf("%v escaped!\n", name)
+	} else {
+		fmt.Printf("%v was caught!\n", name)
+		cfg.pokedex[name] = pokemon
+	}
+	return nil
+}
+
+func commandInspect(cfg *config, name string) error {
+	if len(name) == 0 {
+		return fmt.Errorf("you must provide a Pokemon name")
+	}
+	url := "https://pokeapi.co/api/v2/pokemon/" + name
+
+	var pokemon pokeapi.Pokemon
+
+	// Check cache get
+	data, found := cfg.pokeCache.Get(url)
+	if found {
+		if err := json.Unmarshal(data, &pokemon); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("you have not caught that pokemon") 
+	}
+
+	fmt.Printf("Name: %v\n", pokemon.Name)
+	fmt.Printf("Height: %v\n", pokemon.Height)
+	fmt.Printf("Weight: %v\n", pokemon.Weight)
+	fmt.Println("Stats:")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf(" -%v: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, t := range pokemon.Types {
+		fmt.Printf(" - %v\n", t.Type.Name)
 	}
 
 	return nil

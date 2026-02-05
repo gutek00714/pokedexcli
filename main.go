@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gutek00714/pokedexcli/internal/pokecache"
 	"time"
+	"github.com/gutek00714/pokedexcli/internal/pokeapi"
 )
 
 func main() {
@@ -11,6 +12,7 @@ func main() {
 		nextLocationsURL: "",
 		previousLocationsURL: "",
 		pokeCache: myCache,
+		pokedex: make(map[string]pokeapi.Pokemon),
 	}
 
 	startRepl(cfg)

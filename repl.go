@@ -9,12 +9,19 @@ import (
 	"io"
 	"encoding/json"
 	"github.com/gutek00714/pokedexcli/internal/pokecache"
+	"github.com/gutek00714/pokedexcli/internal/pokeapi"
 )
 
 type cliCommand struct {
 	name string
 	description string
 	callback func(cfg *config, name string) error
+}
+
+type config struct {
+	nextLocationsURL string
+	previousLocationsURL string
+	pokeCache *pokecache.Cache
 }
 
 var commands map[string]cliCommand
@@ -101,22 +108,6 @@ func commandHelp(cfg *config, _ string) error {
 	return nil
 }
 
-type Issue struct {
-	Next string `json:"next"`
-	Previous string `json:"previous"`
-	Results []Result `json:"results"`
-}
-
-type Result struct {
-	Name string `json:"name"`
-}
-
-type config struct {
-	nextLocationsURL string
-	previousLocationsURL string
-	pokeCache *pokecache.Cache
-}
-
 func commandMap(cfg *config, _ string) error {
 	var url string
 
@@ -128,7 +119,7 @@ func commandMap(cfg *config, _ string) error {
 	}
 
 	//get
-	var issues Issue
+	var issues pokeapi.Issue
 	// fmt.Println(url)
 	data, found := cfg.pokeCache.Get(url)
 	if found {
@@ -179,7 +170,7 @@ func commandMapb(cfg *config, _ string) error {
 	}
 
 	//get
-	var issues Issue
+	var issues pokeapi.Issue
 	// fmt.Println(url)
 	data, found := cfg.pokeCache.Get(url)
 	if found {
@@ -219,14 +210,6 @@ func commandMapb(cfg *config, _ string) error {
 	return nil
 }
 
-type LocationArea struct {
-	PokemonEncounters []struct {
-		Pokemon struct {
-			Name string `json:"name"`
-		} `json:"pokemon"` 
-	} `json:"pokemon_encounters"`	
-}
-
 func commandExplore(cfg *config, name string) error {
 	if len(name) == 0 {
 		return fmt.Errorf("you must provide a location name")
@@ -235,7 +218,7 @@ func commandExplore(cfg *config, name string) error {
 
 	fmt.Printf("Exploring %v...\n", name)
 
-	var locationArea LocationArea
+	var locationArea pokeapi.LocationArea
 
 	// Check cache get
 	data, found := cfg.pokeCache.Get(url)
